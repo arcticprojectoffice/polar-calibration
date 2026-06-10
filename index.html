@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Полярная калибровка — ПОРА считать</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --night: #0E1B2C;
+    --night-2: #15273D;
+    --ice: #F2F6F9;
+    --ice-dim: #9FB3C8;
+    --blue: #3D7BE0;
+    --aurora: #3FD0A4;
+    --coral: #E8704F;
+    --amber: #E8B54F;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--night);
+    color: var(--ice);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    display: flex;
+    justify-content: center;
+  }
+  #app {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100%;
+    padding: 24px 20px 32px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  .stars { position: absolute; inset: 0; pointer-events: none; opacity: 0.5; }
+  .stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: var(--ice); animation: tw 4s infinite; }
+  @keyframes tw { 0%,100% { opacity: .2; } 50% { opacity: .9; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  .screen { display: none; flex-direction: column; flex: 1; position: relative; z-index: 1; }
+  .screen.active { display: flex; }
+
+  .brand { font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ice-dim); }
+  .brand b { color: var(--blue); font-weight: 600; }
+
+  h1 { font-size: 34px; line-height: 1.15; font-weight: 700; margin: 14px 0 12px; letter-spacing: -0.01em; }
+  .lede { color: var(--ice-dim); font-size: 16px; max-width: 36ch; }
+
+  .rules { margin: 28px 0; display: grid; gap: 14px; }
+  .rule { display: flex; gap: 12px; align-items: baseline; font-size: 15px; color: var(--ice); }
+  .rule .dot { font-family: var(--mono); color: var(--aurora); font-size: 13px; flex: 0 0 auto; }
+
+  button { font-family: var(--sans); cursor: pointer; border: none; }
+  .btn {
+    width: 100%; padding: 16px; border-radius: 14px;
+    background: var(--blue); color: #fff; font-size: 17px; font-weight: 600;
+    transition: transform .08s ease, background .15s ease;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { background: var(--night-2); color: var(--ice-dim); }
+  .btn.ghost { background: transparent; color: var(--ice-dim); font-weight: 500; font-size: 15px; margin-top: 10px; }
+  .btn:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--aurora); outline-offset: 3px; }
+
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+  .progress { font-family: var(--mono); font-size: 13px; color: var(--ice-dim); }
+  .progress b { color: var(--ice); font-weight: 600; }
+  .score-chip { font-family: var(--mono); font-size: 13px; color: var(--aurora); }
+
+  .track { height: 3px; background: var(--night-2); border-radius: 2px; margin-bottom: 28px; overflow: hidden; }
+  .track i { display: block; height: 100%; background: var(--blue); border-radius: 2px; transition: width .4s ease; }
+
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--amber); margin-bottom: 12px;
+  }
+  .q-text { font-size: 22px; font-weight: 600; line-height: 1.3; }
+  .q-context { color: var(--ice-dim); font-size: 14px; margin-top: 10px; }
+
+  .guess-box { margin: auto 0; padding: 30px 0 10px; text-align: center; }
+  .guess-value { font-family: var(--mono); font-size: 56px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .guess-unit { font-family: var(--mono); font-size: 14px; color: var(--ice-dim); margin-top: 6px; }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; margin-top: 18px; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--night-2); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--ice); border: 5px solid var(--blue); margin-top: -12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.45);
+  }
+  input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--night-2); }
+  input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--ice); border: 5px solid var(--blue); }
+  .range-ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--ice-dim); margin-top: 4px; }
+
+  .reveal { display: none; margin: auto 0; padding: 24px 0 10px; }
+  .verdict { font-size: 22px; font-weight: 700; margin-bottom: 18px; }
+  .verdict.good { color: var(--aurora); }
+  .verdict.mid { color: var(--amber); }
+  .verdict.bad { color: var(--coral); }
+
+  .scale { position: relative; height: 86px; margin: 6px 0 4px; }
+  .scale .base { position: absolute; left: 0; right: 0; top: 50px; height: 6px; border-radius: 3px; background: var(--night-2); }
+  .scale .gap { position: absolute; top: 50px; height: 6px; background: var(--coral); opacity: .65; border-radius: 3px; transition: left .6s ease, width .6s ease; }
+  .pin { position: absolute; top: 0; transform: translateX(-50%); text-align: center; transition: left .6s ease; }
+  .pin .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ice-dim); }
+  .pin .num { font-family: var(--mono); font-size: 16px; font-weight: 600; }
+  .pin .stem { width: 2px; height: 16px; margin: 3px auto 0; }
+  .pin.you .num { color: var(--ice); } .pin.you .stem { background: var(--ice); }
+  .pin.real { top: 60px; }
+  .pin.real .stem { background: var(--aurora); margin: 0 auto 3px; }
+  .pin.real .num { color: var(--aurora); font-size: 18px; }
+
+  .points-line { display: flex; justify-content: space-between; align-items: baseline; margin: 22px 0 14px; font-family: var(--mono); font-size: 14px; color: var(--ice-dim); }
+  .points-line b { color: var(--ice); font-size: 20px; }
+
+  .explain {
+    background: var(--night-2); border-radius: 14px; padding: 16px;
+    font-size: 14px; color: var(--ice); line-height: 1.55;
+  }
+  .explain a { color: var(--blue); text-decoration: none; font-weight: 600; }
+
+  .final-score { text-align: center; margin: 26px 0 8px; }
+  .final-score .big { font-family: var(--mono); font-size: 72px; font-weight: 700; line-height: 1; color: var(--aurora); }
+  .final-score .of { font-family: var(--mono); font-size: 14px; color: var(--ice-dim); margin-top: 6px; }
+  .rank { text-align: center; font-size: 22px; font-weight: 700; margin: 14px 0 4px; }
+  .rank-note { text-align: center; color: var(--ice-dim); font-size: 14px; max-width: 32ch; margin: 0 auto 22px; }
+
+  .breakdown { display: grid; gap: 8px; margin-bottom: 26px; }
+  .b-row { display: grid; grid-template-columns: 1fr 64px; gap: 10px; align-items: center; font-size: 13px; color: var(--ice-dim); }
+  .b-bar { height: 6px; border-radius: 3px; background: var(--night-2); position: relative; margin-top: 4px; }
+  .b-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--blue); }
+  .b-pts { font-family: var(--mono); text-align: right; color: var(--ice); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="stars" id="stars" aria-hidden="true"></div>
+
+  <!-- START -->
+  <section class="screen active" id="s-start">
+    <div class="brand"><b>🟦 ПОРА считать</b> · мини-игра</div>
+    <h1>Полярная калибровка</h1>
+    <p class="lede">Насколько хорошо вы чувствуете Арктику в цифрах? Все ответы — реальные данные из наших разборов.</p>
+    <div class="rules">
+      <div class="rule"><span class="dot">01</span><span>8 вопросов. На каждый — слайдер: двигайте и фиксируйте оценку.</span></div>
+      <div class="rule"><span class="dot">02</span><span>Чем ближе к реальному значению — тем больше баллов (до 100 за вопрос).</span></div>
+      <div class="rule"><span class="dot">03</span><span>После ответа — настоящая цифра, источник и ссылка на разбор.</span></div>
+    </div>
+    <div style="margin-top:auto">
+      <button class="btn" id="btn-start">Начать калибровку</button>
+    </div>
+  </section>
+
+  <!-- QUESTION -->
+  <section class="screen" id="s-quiz">
+    <div class="topbar">
+      <span class="progress">вопрос <b id="q-num">1</b>/8</span>
+      <span class="score-chip" id="score-chip">0 баллов</span>
+    </div>
+    <div class="track"><i id="track-fill" style="width:12.5%"></i></div>
+
+    <div id="ask-block">
+      <span class="tag" id="q-tag"></span>
+      <div class="q-text" id="q-text"></div>
+      <div class="q-context" id="q-context"></div>
+
+      <div class="guess-box">
+        <div class="guess-value" id="g-value">—</div>
+        <div class="guess-unit" id="g-unit"></div>
+        <input type="range" id="slider" aria-label="Ваша оценка">
+        <div class="range-ends"><span id="r-min"></span><span id="r-max"></span></div>
+      </div>
+      <div style="margin-top:auto">
+        <button class="btn" id="btn-lock">Зафиксировать ответ</button>
+      </div>
+    </div>
+
+    <div class="reveal" id="reveal-block">
+      <div class="verdict" id="verdict"></div>
+      <div class="scale">
+        <div class="base"></div>
+        <div class="gap" id="gap"></div>
+        <div class="pin you" id="pin-you"><div class="lbl">вы</div><div class="num" id="pin-you-num"></div><div class="stem"></div></div>
+        <div class="pin real" id="pin-real"><div class="stem"></div><div class="num" id="pin-real-num"></div><div class="lbl">реальность</div></div>
+      </div>
+      <div class="points-line"><span>точность <span id="acc"></span></span><b id="pts"></b></div>
+      <div class="explain" id="explain"></div>
+      <div style="margin-top:auto; padding-top:20px">
+        <button class="btn" id="btn-next">Дальше</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="screen" id="s-final">
+    <div class="brand"><b>🟦 ПОРА считать</b> · итоги</div>
+    <div class="final-score">
+      <div class="big" id="total">0</div>
+      <div class="of">из 800 баллов</div>
+    </div>
+    <div class="rank" id="rank"></div>
+    <div class="rank-note" id="rank-note"></div>
+    <div class="breakdown" id="breakdown"></div>
+    <div style="margin-top:auto">
+      <button class="btn" id="btn-share">Поделиться результатом</button>
+      <button class="btn ghost" id="btn-restart">Пройти ещё раз</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const QUESTIONS = [
+  {
+    tag: "Цены · март 2026",
+    text: "На сколько процентов минимальный набор продуктов в Арктике дороже среднероссийского?",
+    context: "Сравниваем среднюю «корзину» по регионам АЗРФ со средней по России.",
+    min: 0, max: 120, step: 1, answer: 37, unit: "%", fmt: v => "+" + v + "%",
+    explain: "Арктическая «корзина» в марте 2026-го стоила 10 571 ₽ против 7 712 ₽ в среднем по РФ — наценка 37,1%. Сильнее всего дорожают овощи и фрукты.",
+    link: "https://t.me/poradata/160", short: "Наценка на продукты"
+  },
+  {
+    tag: "Зарплаты · II кв. 2025",
+    text: "Сколько фиксированных потребительских наборов покрывает медианная зарплата в ЯНАО?",
+    context: "ЯНАО — лидер всей России по покупательной способности зарплат. В среднем по РФ — 2,5 набора.",
+    min: 1, max: 8, step: 0.1, answer: 5.1, unit: "наборов", fmt: v => v.toFixed(1),
+    explain: "Чистая медианная зарплата в ЯНАО покрывает 5,1 фиксированного набора — первое место среди всех субъектов РФ. Чукотка вторая (4,3), НАО третий (~4).",
+    link: "https://t.me/poradata/163", short: "Зарплата ЯНАО в «наборах»"
+  },
+  {
+    tag: "Малый бизнес · 2024",
+    text: "Сколько субъектов МСП приходится на 1 тысячу жителей в Карелии?",
+    context: "Карелия — лидер по плотности малого бизнеса среди арктических регионов.",
+    min: 0, max: 120, step: 1, answer: 53, unit: "МСП на 1 тыс. жителей", fmt: v => String(v),
+    explain: "В Карелии 53 субъекта МСП на 1 тыс. жителей — выше среднего по нашей арктической выборке (~41) и выше среднероссийских ~48.",
+    link: "https://t.me/poradata/179", short: "Плотность МСП в Карелии"
+  },
+  {
+    tag: "Экономика · 2024",
+    text: "Какую долю валового регионального продукта Карелии создаёт малый и средний бизнес?",
+    context: "Для сравнения: в добывающем НАО доля МСП в ВРП — всего 2,1%.",
+    min: 0, max: 60, step: 1, answer: 26, unit: "% ВРП", fmt: v => v + "%",
+    explain: "МСП производит более четверти ВРП Карелии — 25,8%. Это максимум по Арктике: дальше Архангельская область (18,6%) и Мурманская (14%).",
+    link: "https://t.me/poradata/179", short: "Доля МСП в ВРП Карелии"
+  },
+  {
+    tag: "Аквакультура · 2025",
+    text: "Сколько тысяч тонн товарной аквакультуры произвела Мурманская область за год?",
+    context: "Вся Россия за 2025 год — около 349 тыс. тонн.",
+    min: 0, max: 150, step: 1, answer: 57, unit: "тыс. тонн", fmt: v => String(v),
+    explain: "Мурманская область дала ~57,4 тыс. тонн — в основном лососевые. Вместе с Карелией (21 тыс. тонн) это 99% всего рыбоводства Заполярья.",
+    link: "https://t.me/poradata/174", short: "Рыбоводство Мурманской обл."
+  },
+  {
+    tag: "Демография · 1959–2025",
+    text: "На сколько процентов выросло население ХМАО за 66 лет?",
+    context: "ХМАО — главный бенефициар освоения Севера. И единственный регион, не терявший население даже в 90-е.",
+    min: 0, max: 2000, step: 10, answer: 1300, unit: "%", fmt: v => "+" + v + "%",
+    explain: "Население ХМАО выросло более чем на 1,3 тыс. процентов — драйвером стала «лёгкая» нефть Тюменского Севера. У Ямала — почти +740%.",
+    link: "https://t.me/poradata/159", short: "Рост населения ХМАО"
+  },
+  {
+    tag: "Цены · март 2026",
+    text: "Насколько капуста в Арктике дороже, чем в среднем по России?",
+    context: "Капуста — рекордсмен северной наценки среди базовых продуктов.",
+    min: 0, max: 250, step: 1, answer: 119, unit: "% к среднему по РФ", fmt: v => "+" + v + "%",
+    explain: "Капуста в АЗРФ дороже среднероссийской на 119% — сказывается логистика: чем сложнее продукт хранить и везти, тем выше северная наценка.",
+    link: "https://t.me/poradata/160", short: "Наценка на капусту"
+  },
+  {
+    tag: "География · Мурманск",
+    text: "Сколько суток длится полярный день на широте Мурманска?",
+    context: "Он начинается 22 мая — солнце не уходит за горизонт до 22 июля.",
+    min: 10, max: 120, step: 1, answer: 62, unit: "суток", fmt: v => String(v),
+    explain: "62 суток непрерывного солнца. Любопытно: в поиске «полярная ночь» всё равно популярнее «полярного дня» — почти в полтора раза за 5 лет.",
+    link: "https://t.me/poradata/178", short: "Полярный день в Мурманске"
+  }
+];
+
+const RANKS = [
+  { min: 0,   name: "Турист с «большой земли»", note: "Арктика пока — белое пятно. Хорошая новость: у нас есть архив разборов." },
+  { min: 300, name: "Полярный стажёр", note: "Интуиция уже включается, но цифры Севера ещё удивляют." },
+  { min: 480, name: "Зимовщик", note: "Уверенная калибровка. Вы явно читаете не только заголовки." },
+  { min: 620, name: "Начальник станции", note: "Отличное чутьё на данные. Северная статистика — ваша стихия." },
+  { min: 740, name: "Главный по цифрам", note: "Почти идеальная калибровка. Вам пора к нам в соавторы." }
+];
+
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const $ = id => document.getElementById(id);
+let qi = 0, total = 0, results = [];
+
+const starsEl = $("stars");
+for (let i = 0; i < 26; i++) {
+  const s = document.createElement("i");
+  s.style.left = Math.random() * 100 + "%";
+  s.style.top = Math.random() * 100 + "%";
+  s.style.animationDelay = (Math.random() * 4) + "s";
+  starsEl.appendChild(s);
+}
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  $(id).classList.add("active");
+}
+
+function fmtVal(q, v) { return q.fmt(q.step < 1 ? Math.round(v * 10) / 10 : Math.round(v)); }
+
+function loadQuestion() {
+  const q = QUESTIONS[qi];
+  $("q-num").textContent = qi + 1;
+  $("track-fill").style.width = ((qi + 1) / QUESTIONS.length * 100) + "%";
+  $("q-tag").textContent = q.tag;
+  $("q-text").textContent = q.text;
+  $("q-context").textContent = q.context;
+  const sl = $("slider");
+  sl.min = q.min; sl.max = q.max; sl.step = q.step;
+  const steps = Math.floor((q.max - q.min) / q.step);
+  sl.value = q.min + Math.floor(Math.random() * (steps + 1)) * q.step;
+  $("g-value").textContent = fmtVal(q, parseFloat(sl.value));
+  $("g-unit").textContent = q.unit;
+  $("r-min").textContent = q.fmt(q.min);
+  $("r-max").textContent = q.fmt(q.max);
+  $("ask-block").style.display = "flex";
+  $("ask-block").style.flexDirection = "column";
+  $("ask-block").style.flex = "1";
+  $("reveal-block").style.display = "none";
+}
+
+$("slider").addEventListener("input", e => {
+  const q = QUESTIONS[qi];
+  $("g-value").textContent = fmtVal(q, parseFloat(e.target.value));
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+});
+
+function scoreFor(q, guess) {
+  const span = q.max - q.min;
+  const err = Math.abs(guess - q.answer) / span;
+  const pts = Math.max(0, Math.round(100 * (1 - err / 0.4)));
+  return { pts, errPct: Math.round(err * 100) };
+}
+
+$("btn-lock").addEventListener("click", () => {
+  const q = QUESTIONS[qi];
+  const guess = parseFloat($("slider").value);
+  const { pts, errPct } = scoreFor(q, guess);
+  total += pts;
+  results.push({ short: q.short, pts });
+
+  const span = q.max - q.min;
+  const youPos = ((guess - q.min) / span) * 100;
+  const realPos = ((q.answer - q.min) / span) * 100;
+
+  $("pin-you").style.left = youPos + "%";
+  $("pin-you-num").textContent = fmtVal(q, guess);
+  $("pin-real").style.left = realPos + "%";
+  $("pin-real-num").textContent = q.fmt(q.answer);
+  $("gap").style.left = Math.min(youPos, realPos) + "%";
+  $("gap").style.width = Math.abs(youPos - realPos) + "%";
+
+  const v = $("verdict");
+  if (pts >= 85) { v.textContent = "Снайперски!"; v.className = "verdict good"; }
+  else if (pts >= 55) { v.textContent = "Близко"; v.className = "verdict mid"; }
+  else { v.textContent = "Север удивляет"; v.className = "verdict bad"; }
+
+  $("acc").textContent = (100 - Math.min(100, Math.round(errPct / 0.4))) + "%";
+  $("pts").textContent = "+" + pts + " баллов";
+  $("explain").innerHTML = q.explain + ' <a href="' + q.link + '" target="_blank" rel="noopener">Полный разбор →</a>';
+  $("score-chip").textContent = total + " баллов";
+
+  $("ask-block").style.display = "none";
+  const rb = $("reveal-block");
+  rb.style.display = "flex";
+  rb.style.flexDirection = "column";
+  rb.style.flex = "1";
+
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(pts >= 55 ? "success" : "warning");
+});
+
+$("btn-next").addEventListener("click", () => {
+  qi++;
+  if (qi < QUESTIONS.length) loadQuestion();
+  else showFinal();
+});
+
+function showFinal() {
+  $("total").textContent = total;
+  let rank = RANKS[0];
+  for (const r of RANKS) if (total >= r.min) rank = r;
+  $("rank").textContent = rank.name;
+  $("rank-note").textContent = rank.note;
+  const bd = $("breakdown");
+  bd.innerHTML = "";
+  results.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "b-row";
+    row.innerHTML = '<div>' + r.short + '<div class="b-bar"><i style="width:' + r.pts + '%"></i></div></div>' +
+                    '<div class="b-pts">' + r.pts + '</div>';
+    bd.appendChild(row);
+  });
+  show("s-final");
+}
+
+$("btn-start").addEventListener("click", () => { show("s-quiz"); loadQuestion(); });
+
+$("btn-restart").addEventListener("click", () => {
+  qi = 0; total = 0; results = [];
+  $("score-chip").textContent = "0 баллов";
+  show("s-quiz"); loadQuestion();
+});
+
+$("btn-share").addEventListener("click", () => {
+  let rank = RANKS[0];
+  for (const r of RANKS) if (total >= r.min) rank = r;
+  const text = "Полярная калибровка: " + total + "/800 — " + rank.name + " ❄️ Проверь своё чутьё на арктические данные в @poradata";
+  if (tg && tg.openTelegramLink) {
+    tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent("https://t.me/poradata") + "&text=" + encodeURIComponent(text));
+  } else if (navigator.share) {
+    navigator.share({ text });
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      $("btn-share").textContent = "Скопировано в буфер";
+      setTimeout(() => $("btn-share").textContent = "Поделиться результатом", 1600);
+    });
+  }
+});
+</script>
+</body>
+</html>
