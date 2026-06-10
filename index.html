@@ -289,11 +289,11 @@ const QUESTIONS = [
 ];
 
 const RANKS = [
-  { min: 0,   name: "Турист с «большой земли»", note: "Пока что Арктика для вас — белое пятно. Но это не страшно: наш канал поможет сориентироваться!" },
-  { min: 300, name: "Вахтовик", note: "Вы часто недалеки от истины, но, похоже, вам надо перечитать наши посты :)" },
-  { min: 480, name: "Полярник", note: "Уверенное знание местности. Вы явно читаете не только заголовки наших постов!" },
+  { min: 0,   name: "Турист с «большой земли»", note: "Арктика для вас — белое пятно. Но наш канал поможет сориентироваться!" },
+  { min: 300, name: "Вахтовик", note: "Вы часто недалеки от истины, но вам надо перечитать наши посты :)" },
+  { min: 480, name: "Полярник", note: "Уверенное знание местности. Вы явно читаете не только заголовки!" },
   { min: 620, name: "Начальник станции", note: "Отличное чутье на данные. Северная статистика — ваша стихия." },
-  { min: 740, name: "Арктический счетовод", note: "Почти идеально. Вполне возможно, вам ПОРА к нам в соавторы." }
+  { min: 740, name: "Арктический счетовод", note: "Класс! Кажется, вам ПОРА к нам в соавторы." }
 ];
 
 const tg = window.Telegram && window.Telegram.WebApp;
@@ -428,7 +428,7 @@ $("btn-restart").addEventListener("click", () => {
 $("btn-share").addEventListener("click", () => {
   let rank = RANKS[0];
   for (const r of RANKS) if (total >= r.min) rank = r;
-  const text = "«Полярная калибровка»: " + total + "/800 — " + rank.name + " ❄️ Проверь свое чутье на арктические данные в @poradata";
+  const text = "«Полярная угадайка»: " + total + "/800 — " + rank.name + " ❄️ Проверь свое чутье на арктические данные в @poradata";
   if (tg && tg.openTelegramLink) {
     tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent("https://t.me/poradata") + "&text=" + encodeURIComponent(text));
   } else if (navigator.share) {
