@@ -137,11 +137,9 @@
   .rank { text-align: center; font-size: 22px; font-weight: 700; margin: 14px 0 4px; }
   .rank-note { text-align: center; color: var(--ice-dim); font-size: 14px; font-weight: 500; max-width: 32ch; margin: 0 auto 22px; }
 
-  .breakdown { display: grid; gap: 8px; margin-bottom: 26px; }
-  .b-row { display: grid; grid-template-columns: 1fr 64px; gap: 10px; align-items: center; font-size: 13px; font-weight: 500; color: var(--ice-dim); }
-  .b-bar { height: 6px; border-radius: 3px; background: var(--night-2); position: relative; margin-top: 4px; }
-  .b-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--blue); }
-  .b-pts { font-family: var(--mono); text-align: right; color: var(--ice); }
+  .breakdown { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0 30px; min-height: 56px; }
+  .flake-award { font-size: 40px; line-height: 1; color: var(--blue); animation: flakePop .5s cubic-bezier(.2,.9,.3,1.4) backwards; }
+  @keyframes flakePop { from { opacity: 0; transform: scale(0) rotate(-90deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
 </style>
 </head>
 <body>
@@ -239,12 +237,12 @@ const QUESTIONS = [
     link: "https://t.me/poradata/163", short: "Зарплата ЯНАО в «наборах»"
   },
   {
-    tag: "Малый бизнес · 2024",
-    text: "Сколько субъектов МСП приходится на 1 тысячу жителей в Карелии?",
-    context: "Карелия — лидер по плотности малого бизнеса среди арктических регионов.",
-    min: 0, max: 120, step: 1, answer: 53, unit: "МСП на 1 тыс. жителей", fmt: v => String(v),
-    explain: "В Карелии 53 субъекта МСП на 1 тыс. жителей — выше среднего по нашей арктической выборке (~41) и выше среднероссийских ~48.",
-    link: "https://t.me/poradata/179", short: "Плотность МСП в Карелии"
+    tag: "Медицина · май 2026",
+    text: "Какой процент врачей в Арктике получили образование в том же регионе, где работают?",
+    context: "По данным портала «ПроДокторов», лишь часть медиков — местные.",
+    min: 0, max: 100, step: 1, answer: 53, unit: "%", fmt: v => v + "%",
+    explain: "Только 53% врачей учились там же, где трудятся. В НАО и Чукотке таких нет вовсе — кадры едут с «материка».",
+    link: "https://t.me/poradata/164?single", short: "Врачи"
   },
   {
     tag: "Экономика · 2024",
@@ -401,19 +399,19 @@ $("btn-next").addEventListener("click", () => {
 
 function showFinal() {
   $("total").textContent = total;
-  let rank = RANKS[0];
-  for (const r of RANKS) if (total >= r.min) rank = r;
+  let rank = RANKS[0], tier = 0;
+  RANKS.forEach((r, i) => { if (total >= r.min) { rank = r; tier = i; } });
   $("rank").textContent = rank.name;
   $("rank-note").textContent = rank.note;
   const bd = $("breakdown");
   bd.innerHTML = "";
-  results.forEach(r => {
-    const row = document.createElement("div");
-    row.className = "b-row";
-    row.innerHTML = '<div>' + r.short + '<div class="b-bar"><i style="width:' + r.pts + '%"></i></div></div>' +
-                    '<div class="b-pts">' + r.pts + '</div>';
-    bd.appendChild(row);
-  });
+  for (let i = 0; i <= tier; i++) {
+    const f = document.createElement("span");
+    f.className = "flake-award";
+    f.textContent = "\u2744";
+    f.style.animationDelay = (i * 0.12) + "s";
+    bd.appendChild(f);
+  }
   show("s-final");
 }
 
