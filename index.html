@@ -72,6 +72,7 @@
   .btn:active { transform: scale(0.98); }
   .btn:disabled { background: var(--night-2); color: var(--ice-dim); }
   .btn.ghost { background: transparent; color: var(--ice-dim); font-weight: 500; font-size: 15px; margin-top: 10px; }
+  #btn-channel { margin-top: -4px; }
   .btn:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--aurora); outline-offset: 3px; }
 
   .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
@@ -214,6 +215,7 @@
     <div style="margin-top:auto">
       <button class="btn" id="btn-share">Поделиться результатом</button>
       <button class="btn ghost" id="btn-restart">Пройти еще раз</button>
+      <button class="btn ghost" id="btn-channel">Читать наш канал</button>
     </div>
   </section>
 </div>
@@ -426,7 +428,7 @@ $("btn-restart").addEventListener("click", () => {
 $("btn-share").addEventListener("click", () => {
   let rank = RANKS[0];
   for (const r of RANKS) if (total >= r.min) rank = r;
-  const text = "«Полярная угадайка»: " + total + "/800 — " + rank.name + " ❄️ Проверь свое чутье на арктические данные в @poradata";
+  const text = "❄️ Мой результат в игре «Полярная угадайка»: " + rank.name + " (счет: " + total + " из 800)\n❄️ Проверь свое чутье на арктические данные в канале «ПОРА считать» — @poradata";
   if (tg && tg.openTelegramLink) {
     tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent("https://t.me/poradata") + "&text=" + encodeURIComponent(text));
   } else if (navigator.share) {
@@ -437,6 +439,12 @@ $("btn-share").addEventListener("click", () => {
       setTimeout(() => $("btn-share").textContent = "Поделиться результатом", 1600);
     });
   }
+});
+
+$("btn-channel").addEventListener("click", () => {
+  const url = "https://t.me/poradata";
+  if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url, "_blank");
 });
 </script>
 </body>
