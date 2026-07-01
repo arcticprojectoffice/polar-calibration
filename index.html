@@ -430,7 +430,7 @@ $("btn-share").addEventListener("click", () => {
   for (const r of RANKS) if (total >= r.min) rank = r;
   const text = "❄️ Мой результат в игре «Полярная угадайка»: " + rank.name + " (счет: " + total + " из 800)\n❄️ Проверь свое чутье на арктические данные в канале «ПОРА считать» — @poradata";
   if (tg && tg.openTelegramLink) {
-    tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent("https://t.me/poradata") + "&text=" + encodeURIComponent(text));
+    tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(" ") + "&text=" + encodeURIComponent(text));
   } else if (navigator.share) {
     navigator.share({ text });
   } else {
